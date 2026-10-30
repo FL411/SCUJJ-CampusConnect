@@ -1,0 +1,17 @@
+# 运行时个人数据（绝不提交）
+rea-connect.config.json
+rea-daemon.log
+wifi-cache.json
+CampusConnect-gui.log
+*.tmp
+
+# 构建产物
+dist/
+*.zip
+
+# 系统/编辑器
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/
+.idea/

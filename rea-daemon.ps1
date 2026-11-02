@@ -68,6 +68,7 @@ $cfg = Get-Content $ConfigPath -Raw | ConvertFrom-Json
 $Portal = if ($cfg.portal) { ([string]$cfg.portal).TrimEnd('/') } else { 'http://10.130.128.9' }
 $WifiCachePath = Join-Path $PSScriptRoot 'wifi-cache.json'
 $script:lastSsid = ''
+$script:ssidChanged = $false
 
 function Save-Config {
     $tmp = "$ConfigPath.tmp"
@@ -95,11 +96,24 @@ function Get-JsEncode {
 
 function Invoke-InterFace {
     param([string]$Method, [string]$Body)
-    $r = Invoke-WebRequest -Uri "$Portal/eportal/InterFace.do?method=$Method" `
-        -Method POST -Body $Body `
-        -ContentType 'application/x-www-form-urlencoded; charset=UTF-8' `
-        -UseBasicParsing -TimeoutSec 20
-    $text = [Text.Encoding]::UTF8.GetString($r.RawContentStream.ToArray())
+    $req = [System.Net.HttpWebRequest]::Create("$Portal/eportal/InterFace.do?method=$Method")
+    $req.Method = 'POST'
+    $req.ContentType = 'application/x-www-form-urlencoded; charset=UTF-8'
+    $req.Timeout = 8000
+    $req.ReadWriteTimeout = 8000
+    $req.Proxy = $null
+    $req.KeepAlive = $false
+    $req.UserAgent = 'Mozilla/5.0'
+    $data = [Text.Encoding]::UTF8.GetBytes($Body)
+    $req.ContentLength = $data.Length
+    $stream = $req.GetRequestStream()
+    $stream.Write($data, 0, $data.Length)
+    $stream.Close()
+    $resp = $req.GetResponse()
+    $reader = New-Object System.IO.StreamReader($resp.GetResponseStream(), [Text.Encoding]::UTF8)
+    $text = $reader.ReadToEnd()
+    $reader.Close()
+    $resp.Close()
     try { return ($text | ConvertFrom-Json) } catch { return [pscustomobject]@{ result = 'unknown'; message = $text } }
 }
 
@@ -108,7 +122,9 @@ function Get-HttpProbe {
     param([string]$Url)
     $req = [System.Net.HttpWebRequest]::Create($Url)
     $req.AllowAutoRedirect = $false
-    $req.Timeout = 6000
+    $req.Timeout = 4000
+    $req.ReadWriteTimeout = 4000
+    $req.Proxy = $null
     $req.UserAgent = 'Mozilla/5.0'
     $resp = $null
     try { $resp = $req.GetResponse() }
@@ -222,6 +238,7 @@ function Test-CampusWifi {
     if (-not $ssid) { return $false }
     if ($ssid -ne $script:lastSsid) {
         Write-Log "当前 WiFi：$ssid" 'INFO'
+        $script:ssidChanged = [bool]$script:lastSsid
         $script:lastSsid = $ssid
     }
 
@@ -394,6 +411,23 @@ while ($true) {
             }
             Start-Sleep -Seconds $CheckSeconds
             continue
+        }
+
+        if ($script:ssidChanged) {
+            $script:ssidChanged = $false
+            Write-Log 'WiFi 已切换，立即检查在线状态' 'INFO'
+            $st = Test-OnlineState
+            if ($st.Online -eq $false) {
+                $red = if ($st.Location) { $st.Location } else { $cfg.redirect }
+                $lr = Invoke-Login $red
+                if ($lr.result -eq 'success') {
+                    $failures = 0
+                    Write-Log 'WiFi 切换后自动登录成功' 'OK'
+                    Start-Sleep -Seconds $CheckSeconds
+                    continue
+                }
+                Write-Log "WiFi 切换后自动登录失败：$($lr.message)" 'WARN'
+            }
         }
 
         # 首次在认证 WiFi 上运行且没有 token：从门户 success 跳转取当前会话 token

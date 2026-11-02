@@ -10,6 +10,7 @@ Windows 10/11 免安装、无控制台、带图形界面的校园网（锐捷 eP
 - **无控制台**：`CampusConnect.vbs` 隐藏启动 PowerShell GUI；`CampusConnect.cmd` 是兼容入口
 - **不主动连接 WiFi**：连接哪个 WiFi 由 Windows 决定，本工具只读取当前 SSID 并按需认证
 - **按 SSID 缓存**：新 WiFi 只探测一次；需要认证的自动登录，不需要认证的写入 `wifi-cache.json` 后跳过
+- **切换即登录**：检测到 SSID 变化后立即尝试登录，不等旧 token 的保活超时；门户请求 8 秒硬超时，避免切换瞬间卡住
 - **断线保活**：约 20 秒一次心跳，掉线/令牌失效时自动重新认证
 - **密码保护**：使用 Windows DPAPI 加密保存，仅当前 Windows 用户可解密
 - **高 DPI**：Per-Monitor V2，200% 缩放下主窗口和设置窗口都不会裁切

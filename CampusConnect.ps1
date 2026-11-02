@@ -102,17 +102,26 @@ function Save-Config {
     Move-Item $tmp $configPath -Force
 }
 
+function Test-UsableSsid {
+    param([string]$Ssid)
+    if (-not $Ssid) { return $false }
+    return ($Ssid.Trim() -notmatch '^(正在识别|识别中|未知|未连接|Identifying|Unknown|Unidentified)')
+}
+
 function Get-CurrentSsid {
     try {
         $p = Get-NetConnectionProfile -ErrorAction SilentlyContinue |
             Where-Object { $_.InterfaceAlias -like '*WLAN*' } |
             Select-Object -First 1
-        if ($p -and $p.Name) { return [string]$p.Name }
+        if ($p -and $p.Name -and (Test-UsableSsid ([string]$p.Name))) { return [string]$p.Name }
     } catch { }
     try {
         $out = & netsh wlan show interfaces 2>$null
         foreach ($line in $out) {
-            if ($line -match '^\s*SSID\s*:\s*(.+)$') { return $matches[1].Trim() }
+            if ($line -match '^\s*SSID\s*:\s*(.+)$') {
+                $ssid = $matches[1].Trim()
+                if (Test-UsableSsid $ssid) { return $ssid }
+            }
         }
     } catch { }
     return ''

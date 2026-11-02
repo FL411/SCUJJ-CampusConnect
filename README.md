@@ -42,6 +42,7 @@ Windows 10/11 免安装、无控制台、带图形界面的校园网（锐捷 eP
 ## 工作原理
 
 1. 读取当前 WiFi SSID（只读，不扫描、不连接、不切换）。
+   - 重连瞬间的 `正在识别...` / `Identifying...` 会被忽略，不写入缓存。
 2. 对每个新 SSID 探测一次学校门户：
    - 302 跳转，或 200 + `top.self.location.href='...'` 跳到学校门户 → 需要认证，自动登录；
    - 正常 204/内容 → 不需要认证，写入 `wifi-cache.json`，同一 SSID 下次跳过；
@@ -65,6 +66,7 @@ Windows 10/11 免安装、无控制台、带图形界面的校园网（锐捷 eP
 | `rea-keepalive.ps1` | 独立保活脚本（排查用） |
 | `build-package.ps1` | 从源码构建 `dist/CampusConnect.zip` |
 | `README.txt` | 随包分发的简明使用说明 |
+| `CHANGELOG.md` | 版本变更记录 |
 | `docs/screenshot.png` | 界面截图 |
 
 运行时生成、**不应提交**的文件：
